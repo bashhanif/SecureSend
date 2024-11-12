@@ -1,6 +1,8 @@
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import hashes
 
 class RSAkeygen:
     def __init__(self, key_size=2048, public_exponent=65537):
@@ -14,7 +16,7 @@ class RSAkeygen:
     def get_private_key_pem(self , password=None):  #password protects private key on our side
            
             encryption_algorithm = (
-                serialization.BestAvailableEncryption(b'mypassword')
+                serialization.BestAvailableEncryption(password.encode())
                 if password
                 else serialization.NoEncryption()    # if no password provided still pem encoded less secure 
             )
@@ -38,6 +40,33 @@ class RSAEncryptDecrypt:
             self.private_key = private_key
 
     
+
+    def encryption(self, message):
+          return self.public_key.encrypt(
+                message.encode(),
+                padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),  #using sha 256 hash type
+                    algorithm=hashes.SHA256(),
+                    label=None
+            )
+            )
+                        
+    def decrypt(self, encrypted_message):
+          
+          return self.private_key.decrypt(
+                encrypted_message,
+                padding.OAEP(
+                      mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                      algorithm=hashes.SHA256(),
+                      label=None
+                )
+                
+                
+                )
+          
+
+    
+          
     
 
 
@@ -48,15 +77,38 @@ class RSAEncryptDecrypt:
 
 if __name__ == "__main__":
     
+    #testing encryption and decyrption features
 
-        #testing
-        key_manager = RSAkeygen()
-        password = b'1234bingus'  # Change to your desired password
-        private_key_pem = key_manager.get_private_key_pem(password=password)
-        public_key_pem = key_manager.get_public_key_pem()
+    keygen = RSAkeygen()
+    password = "mypassword"
 
-        print("Private Key (PKCS#8):\n", private_key_pem.decode())
-        print("Public Key (PEM):\n", public_key_pem.decode())
+    private_key_pem = keygen.get_private_key_pem(password=password)
+    public_key_pem = keygen.get_public_key_pem()
+
+
+    private_key = serialization.load_pem_private_key(private_key_pem, password=password.encode())
+    public_key = serialization.load_pem_public_key(public_key_pem)
+
+
+    rsa_cipher = RSAEncryptDecrypt(public_key=public_key, private_key=private_key)
+
+
+    original_message = "hello secure send!"
+    encrypted_message = rsa_cipher.encryption(original_message)
+
+    print("Encrypted message:", encrypted_message)
+
+    decrypted_message = rsa_cipher.decrypt(encrypted_message).decode()
+    print("decrypted message:" , decrypted_message)
+
+
+    if original_message == decrypted_message:
+          print("test was successful")
+    else:
+          print("bruh that aint work lol")
+
+
+
 
 
 
