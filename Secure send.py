@@ -3,6 +3,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
+import traceback
 
 class RSAkeygen:
     def __init__(self, key_size=2048, public_exponent=65537):
@@ -34,15 +35,47 @@ class RSAkeygen:
                 format= serialization.PublicFormat.SubjectPublicKeyInfo,
             )
     
+    
+    
 class RSAEncryptDecrypt:
     def __init__(self,public_key,private_key):
             self.public_key = public_key
             self.private_key = private_key
 
     
+    def sign_msg(self, message):   #using private key to sign message , allowing anyone with public key to verify that the message was created by some one who has the private key
+        signature = self.private_key.sign(
+             message.encode(),
+             padding.PSS(
+                  mgf= padding.MGF1(hashes.SHA256()),
+                  salt_length=padding.PSS.MAX_LENGTH
+             ),
+             hashes.SHA256()
+        )
 
+        return signature
+    
+
+    def verify_msg(self, message, signature):
+       
+            # Verify the signature using the public key
+            self.public_key.verify(
+                signature,
+                message.encode(), 
+                padding.PSS(
+                    mgf=padding.MGF1(hashes.SHA256()),
+                    salt_length=padding.PSS.MAX_LENGTH
+                ),
+                hashes.SHA256()
+            )
+      
+        
+    
+
+
+    
     def encryption(self, message):
-          return self.public_key.encrypt(
+        return self.public_key.encrypt(
                 message.encode(),
                 padding.OAEP(
                     mgf=padding.MGF1(algorithm=hashes.SHA256()),  #using sha 256 hash type
@@ -62,7 +95,7 @@ class RSAEncryptDecrypt:
                 )
                 
                 
-                )
+        )
           
 
     
@@ -106,6 +139,19 @@ if __name__ == "__main__":
           print("test was successful")
     else:
           print("bruh that aint work lol")
+
+   #more tests for signature and verify 
+    signature = rsa_cipher.sign_msg(original_message)
+
+    print("signature = ", signature)
+
+    verified = rsa_cipher.verify_msg(original_message, signature)
+
+    try:
+        rsa_cipher.verify_msg(original_message, signature)
+        print("Signature verified")
+    except Exception as e:
+        print("Not verified:", e)
 
 
 
